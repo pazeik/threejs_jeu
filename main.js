@@ -1,5 +1,7 @@
 import * as THREE from "three";
-import { OrbitControls } from "https://unpkg.com/three@0.112/examples/jsm/controls/OrbitControls.js";
+import { zzfx } from './ZzFX/ZzFX.js';
+
+// Set up the scene, camera, and renderer
 
 const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(
@@ -9,24 +11,44 @@ const camera = new THREE.PerspectiveCamera(
   1000
 );
 const renderer = new THREE.WebGLRenderer();
+
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.shadowMap.enabled = true;
 document.body.appendChild(renderer.domElement);
 
+// Add ambient light and directional light with shadow
+
 const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
 scene.add(ambientLight);
 
-const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
-directionalLight.position.set(10, 10, 10);
+const directionalLight = new THREE.DirectionalLight(0xffffff, 1);
+directionalLight.position.set(0, 100, 0);
+directionalLight.castShadow = true; // Ensure this property is set to true
+
+// Increase shadow map resolution
+directionalLight.shadow.mapSize.width = 2048 * 2; // Adjust these values as needed
+directionalLight.shadow.mapSize.height = 2048 * 2;
+
+// Adjust shadow camera parameters
+const shadowCameraSize = 100;
+directionalLight.shadow.camera.left = -shadowCameraSize;
+directionalLight.shadow.camera.right = shadowCameraSize;
+directionalLight.shadow.camera.top = shadowCameraSize;
+directionalLight.shadow.camera.bottom = -shadowCameraSize;
+directionalLight.shadow.camera.near = 0.1;
+directionalLight.shadow.camera.far = 1000;
+
 scene.add(directionalLight);
 
-const pointLight = new THREE.PointLight(0xffffff, 0.8);
-pointLight.position.set(-10, 10, -10);
-scene.add(pointLight);
+const helper = new THREE.CameraHelper(directionalLight.shadow.camera);
+scene.add(helper);
+
+// Add a player sphere
 
 const geometry = new THREE.SphereGeometry();
 const material = new THREE.MeshToonMaterial({ color: 0x00ffff });
 const player = new THREE.Mesh(geometry, material);
+player.castShadow = true;
 scene.add(player);
 
 //make a blue sky sphere
@@ -37,13 +59,11 @@ const sky = new THREE.Mesh(skyGeometry, skyMaterial);
 sky.material.side = THREE.BackSide;
 scene.add(sky);
 
-camera.position.z = 5;
-
 let groundWidth = 200;
 
 //Add a ground plane and handle collision with the player
 const groundGeometry = new THREE.PlaneGeometry(groundWidth, groundWidth);
-const groundMaterial = new THREE.MeshBasicMaterial({ color: 0xff5733 });
+const groundMaterial = new THREE.MeshPhongMaterial({ color: 0xff5733 });
 const ground = new THREE.Mesh(groundGeometry, groundMaterial);
 ground.receiveShadow = true;
 ground.position.y = -2;
@@ -51,10 +71,8 @@ ground.rotation.x = -Math.PI / 2;
 scene.add(ground);
 player.position.y = ground.position.y + 1;
 
-const controls = new OrbitControls(camera, renderer.domElement);
-
 // Add controls for player with arrow keys
-const speed = 0.5;
+const speed = 0.1;
 const arrowKeys = { left: 37, up: 38, right: 39, down: 40 };
 const keysPressed = {};
 
@@ -99,10 +117,6 @@ function updatePlayerPosition() {
   player.position.add(playerVelocity);
 }
 
-//Make spheres fall around the player from the sky on the ground at random positions
-
-const sphereGeometry = new THREE.SphereGeometry(1, 32, 32);
-const sphereMaterial = new THREE.MeshBasicMaterial({ color: 0x0000ff });
 const spheres = [];
 
 const sphereType = [
@@ -123,7 +137,6 @@ const color = [
   0x000000, 0x800000, 0x808000,
 ];
 
-//create a list of 10 different markers
 const spheresType = [];
 
 for (let i = 0; i < 10; i++) {
@@ -158,47 +171,27 @@ function updateCamera() {
   camera.lookAt(player.position);
 }
 
-//create a map between markers and spheres
-const markerMap = new Map();
-
-for (let i = 0; i < spheres.length; i++) {
-  const markerGeometry = new THREE.SphereGeometry(0.1, 32, 32);
-  const markerMaterial = new THREE.MeshBasicMaterial({ color: 0x0000ff });
-  const marker = new THREE.Mesh(markerGeometry, markerMaterial);
-  marker.position.x = spheres[i].position.x;
-  marker.position.z = spheres[i].position.z;
-  marker.position.y = -2;
-  scene.add(marker);
-  markerMap.set(spheres[i], marker);
-}
-
 //create a score for each collision
 let score = 0;
 
 function animate() {
   updatePlayerPosition();
   updatePlayerVelocity();
+
   for (let i = 1; i < spheres.length; i++) {
     spheres[i].position.y -= Math.random(0.1, 1) * 0.3;
-    //add marker on the ground where the sphere falls
-    const marker = markerMap.get(spheres[i]); // Get the assigned marker from the map
-    marker.position.x = spheres[i].position.x;
-    marker.position.z = spheres[i].position.z;
-    marker.position.y = ground.position.y;
-    scene.add(marker);
     if (spheres[i].position.y < ground.position.y + 1) {
       spheres[i].position.y = 50;
       spheres[i].position.x = Math.random() * 60 - 5;
       spheres[i].position.z = Math.random() * 60 - 5;
-      scene.remove(marker); // Remove the marker from the scene
     } else if (player.position.distanceTo(spheres[i].position) < 1) {
+      zzfx(...[2.12, , 119, , .08, .23, , 1.12, , , 156, .1, , .9, , , , .47]);
       score += 1;
       const scoreDiv = document.getElementById("score");
       scoreDiv.innerHTML = score;
       spheres[i].position.y = 50;
       spheres[i].position.x = Math.random() * 60 - 5;
       spheres[i].position.z = Math.random() * 60 - 5;
-      scene.remove(marker); // Remove the marker from the scene
     }
   }
 
