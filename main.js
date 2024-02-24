@@ -1,4 +1,5 @@
 import * as THREE from "three";
+import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { zzfx } from './ZzFX/ZzFX.js';
 
 // Set up the scene, camera, and renderer
@@ -63,8 +64,9 @@ let groundWidth = 200;
 
 //Add a ground plane and handle collision with the player
 const groundGeometry = new THREE.PlaneGeometry(groundWidth, groundWidth);
-const groundMaterial = new THREE.MeshPhongMaterial({ color: 0xff5733 });
+const groundMaterial = new THREE.MeshPhongMaterial({ color: 0x38761d });
 const ground = new THREE.Mesh(groundGeometry, groundMaterial);
+
 ground.receiveShadow = true;
 ground.position.y = -2;
 ground.rotation.x = -Math.PI / 2;
@@ -171,6 +173,63 @@ function updateCamera() {
   camera.lookAt(player.position);
 }
 
+// Adding decorations to the scene
+
+function loadModel(position, path, scale) {
+  const loader = new GLTFLoader();
+  loader.load(path, function (gltf) {
+    let model = gltf.scene;
+    model.scale.set(scale, scale, scale);
+    model.position.copy(position);
+    model.castShadow = true;
+    scene.add(model);
+  });
+}
+
+const treePath = '/assets/Tree.glb';
+const rockPath = '/assets/SRock.glb';
+
+const treePositions = [];
+const rockPositions = [];
+
+function generatePositions(positions, numPositions, minDistance, maxDistance) {
+  for (let i = 0; i < numPositions; i++) {
+    let position;
+    let isOverlapping;
+
+    do {
+      position = new THREE.Vector3(
+        Math.random() * groundWidth - groundWidth / 2,
+        ground.position.y + 0.0000001,
+        Math.random() * groundWidth - groundWidth / 2
+      );
+
+      isOverlapping = false;
+      for (let j = 0; j < positions.length; j++) {
+        const distance = position.distanceTo(positions[j]);
+        if (distance < minDistance) {
+          isOverlapping = true;
+          break;
+        }
+      }
+    } while (isOverlapping);
+
+    positions.push(position);
+
+    const scale = Math.random() * 20 + 20; // Random scale between 20 and 40
+
+    if (positions === treePositions) {
+      loadModel(position, treePath, scale);
+    } else if (positions === rockPositions) {
+      const rockScale = Math.random() * 10 + 10; // Random scale between 10 and 20 for rocks
+      loadModel(position, rockPath, rockScale);
+    }
+  }
+}
+
+generatePositions(treePositions, 40, 10, 20);
+generatePositions(rockPositions, 40, 10, 20);
+
 //create a score for each collision
 let score = 0;
 
@@ -184,7 +243,7 @@ function animate() {
       spheres[i].position.y = 50;
       spheres[i].position.x = Math.random() * 60 - 5;
       spheres[i].position.z = Math.random() * 60 - 5;
-    } else if (player.position.distanceTo(spheres[i].position) < 1) {
+    } else if (player.position.distanceTo(spheres[i].position) < 2) {
       zzfx(...[2.12, , 119, , .08, .23, , 1.12, , , 156, .1, , .9, , , , .47]);
       score += 1;
       const scoreDiv = document.getElementById("score");
